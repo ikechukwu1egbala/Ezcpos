@@ -1,12 +1,20 @@
 from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Product, Sale, Category, Customer 
+from .models import (
+    Product,
+    Category,
+    Customer,
+    Sale,
+    SaleItem,
+)
+
 from .serializers import (
     ProductSerializer,
     CategorySerializer,
     CustomerSerializer,
-    SaleSerializer
+    SaleSerializer,
+    SaleItemSerializer,
 )
 from .services import create_sale
 
@@ -56,7 +64,7 @@ class CategoryViewSet(viewsets.ModelViewSet):
 
 
 class CustomerViewSet(viewsets.ModelViewSet):
-    queryset = Customer.objects.all()
+    queryset = Customer.objects.all().order_by("name")
     serializer_class = CustomerSerializer
 
 

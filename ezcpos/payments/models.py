@@ -53,4 +53,4 @@ class Payment(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.sale.receipt_number} - {self.amount}"
+        return f"Sale #{self.sale.id} - ₦{self.amount}"

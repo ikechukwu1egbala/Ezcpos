@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: ezc-pos-api
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn config.wsgi:application"
+    plan: free
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: False
