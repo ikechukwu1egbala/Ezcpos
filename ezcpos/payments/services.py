@@ -1,57 +1,118 @@
-from django.db import transaction
 from decimal import Decimal
+
+from django.db import transaction
+from django.db.models import Sum
+
 from .models import Payment
 
 
 @transaction.atomic
-def process_payment(sale, amount, method, user, reference=None):
+def process_payment(
+    sale,
+    amount,
+    method,
+    user,
+    reference=None,
+):
+    """
+    Process a payment against a sale.
 
-    amount = Decimal(amount)
+    Supports:
+    - Full payment
+    - Part payment
+    - Split payments
+    - Customer credit
+    """
+
+    amount = Decimal(str(amount))
 
     if amount <= 0:
-        raise ValueError("Payment amount must be greater than zero")
+        raise ValueError(
+            "Payment amount must be greater than zero."
+        )
 
-    total_paid = sum(p.amount for p in sale.payments.all())
-    remaining = sale.total_amount - total_paid
+    # Lock the sale's payment records while processing.
+    completed_paid = (
+        Payment.objects
+        .select_for_update()
+        .filter(
+            sale=sale,
+            status="completed",
+        )
+        .aggregate(
+            total=Sum("amount")
+        )["total"]
+        or Decimal("0.00")
+    )
 
-    if amount > remaining:
-        raise ValueError("Payment exceeds remaining balance")
+    outstanding = (
+        sale.total_amount - completed_paid
+    )
+
+    if outstanding <= 0:
+        raise ValueError(
+            "This sale has already been fully paid."
+        )
+
+    if amount > outstanding:
+        raise ValueError(
+            f"Payment exceeds outstanding balance. "
+            f"Outstanding balance is ₦{outstanding}."
+        )
 
     payment = Payment.objects.create(
         sale=sale,
         amount=amount,
         payment_method=method,
         transaction_reference=reference,
-        status="completed",
         processed_by=user,
+        status="completed",
     )
 
-    total_paid += amount
-
-    if total_paid >= sale.total_amount:
-        sale.payment_status = "paid"
-        sale.save()
-
     return payment
+
 
 @transaction.atomic
-def refund_payment(payment, user):
+def refund_payment(
+    payment,
+    user,
+):
+    """
+    Refund a completed payment.
+    """
 
     if payment.status != "completed":
-        raise ValueError("Only completed payments can be refunded")
+        raise ValueError(
+            "Only completed payments can be refunded."
+        )
 
     payment.status = "refunded"
-    payment.save()
 
-    sale = payment.sale
-
-    total_paid = sum(
-        p.amount for p in sale.payments.filter(status="completed")
+    payment.save(
+        update_fields=["status"]
     )
 
-    if total_paid < sale.total_amount:
-        sale.payment_status = "partial"
-        sale.save()
-
     return payment
+
+
+# Backward-compatible alias.
+#
+# This allows existing code using record_payment()
+# to continue working while the API uses process_payment().
+
+def record_payment(
+    sale,
+    amount,
+    payment_method,
+    processed_by,
+    transaction_reference=None,
+):
+
+    return process_payment(
+        sale=sale,
+        amount=amount,
+        method=payment_method,
+        user=processed_by,
+        reference=transaction_reference,
+    )
     

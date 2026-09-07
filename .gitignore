@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Django
+*.sqlite3
+*.log
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment variables
+.env
+.env.*
+
+# IDE / editor
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+
+# Git backup created during repository repair
+.git.backup/
+
+# Temporary / backup files
+*.backup
+
+# Django collected static files
+staticfiles/
+ezcpos/staticfiles/

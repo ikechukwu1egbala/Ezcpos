@@ -8,4 +8,3 @@ def log_stock(product, change, reason):
         change=change,
         reason=reason
     )
-

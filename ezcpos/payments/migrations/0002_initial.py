@@ -10,41 +10,27 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
+        ("payments", "0001_initial"),
         ("pos", "0001_initial"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AddField(
-            model_name="sale",
-            name="cashier",
+            model_name="payment",
+            name="processed_by",
             field=models.ForeignKey(
-                on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL
-            ),
-        ),
-        migrations.AddField(
-            model_name="sale",
-            name="customer",
-            field=models.ForeignKey(
-                blank=True,
                 null=True,
                 on_delete=django.db.models.deletion.SET_NULL,
-                to="pos.customer",
+                to=settings.AUTH_USER_MODEL,
             ),
         ),
         migrations.AddField(
-            model_name="saleitem",
-            name="product",
-            field=models.ForeignKey(
-                on_delete=django.db.models.deletion.CASCADE, to="pos.product"
-            ),
-        ),
-        migrations.AddField(
-            model_name="saleitem",
+            model_name="payment",
             name="sale",
             field=models.ForeignKey(
                 on_delete=django.db.models.deletion.CASCADE,
-                related_name="items",
+                related_name="payments",
                 to="pos.sale",
             ),
         ),
