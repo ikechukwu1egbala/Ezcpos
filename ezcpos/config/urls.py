@@ -1,7 +1,5 @@
 from django.contrib import admin
 from django.urls import path, include
-from rest_framework.routers import DefaultRouter
-from pos.views import ProductViewSet, SaleViewSet
 from django.http import HttpResponse
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
@@ -12,9 +10,6 @@ def home(request):
     return HttpResponse("EZC POS API is running 🚀")
 
 
-router = DefaultRouter()
-router.register(r'products', ProductViewSet)
-router.register(r'sales', SaleViewSet)
 
 urlpatterns = [
     path("", home),
