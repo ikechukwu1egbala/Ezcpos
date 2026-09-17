@@ -25,7 +25,10 @@ class Payment(models.Model):
         related_name="payments"
     )
 
-    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2
+    )
 
     payment_method = models.CharField(
         max_length=20,
@@ -50,7 +53,59 @@ class Payment(models.Model):
         null=True
     )
 
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(
+        auto_now_add=True
+    )
 
     def __str__(self):
         return f"Sale #{self.sale.id} - ₦{self.amount}"
+
+
+class Refund(models.Model):
+
+    REFUND_REASONS = (
+        ("customer_return", "Customer Return"),
+        ("wrong_sale", "Wrong Sale"),
+        ("damaged_product", "Damaged Product"),
+        ("duplicate_payment", "Duplicate Payment"),
+        ("other", "Other"),
+    )
+
+    payment = models.ForeignKey(
+        Payment,
+        on_delete=models.CASCADE,
+        related_name="refunds"
+    )
+
+    amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2
+    )
+
+    reason = models.CharField(
+        max_length=30,
+        choices=REFUND_REASONS
+    )
+
+    reference = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True
+    )
+
+    processed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="processed_refunds"
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True
+    )
+
+    def __str__(self):
+        return (
+            f"Refund - Payment #{self.payment.id} "
+            f"- ₦{self.amount}"
+        )

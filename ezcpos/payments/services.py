@@ -1,9 +1,9 @@
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from django.db import transaction
 from django.db.models import Sum
 
-from .models import Payment
+from .models import Payment, Refund
 
 
 @transaction.atomic
@@ -14,27 +14,36 @@ def process_payment(
     user,
     reference=None,
 ):
-    """
-    Process a payment against a sale.
+    from pos.models import Sale
 
-    Supports:
-    - Full payment
-    - Part payment
-    - Split payments
-    - Customer credit
-    """
+    sale = (
+        Sale.objects
+        .select_for_update()
+        .get(pk=sale.pk)
+    )
 
-    amount = Decimal(str(amount))
+    try:
+        amount = Decimal(str(amount))
+    except (InvalidOperation, ValueError, TypeError):
+        raise ValueError("Invalid payment amount.")
 
-    if amount <= 0:
+    if amount <= Decimal("0.00"):
         raise ValueError(
             "Payment amount must be greater than zero."
         )
 
-    # Lock the sale's payment records while processing.
+    valid_methods = {
+        choice[0]
+        for choice in Payment.PAYMENT_METHODS
+    }
+
+    if method not in valid_methods:
+        raise ValueError(
+            "Invalid payment method."
+        )
+
     completed_paid = (
         Payment.objects
-        .select_for_update()
         .filter(
             sale=sale,
             status="completed",
@@ -45,11 +54,9 @@ def process_payment(
         or Decimal("0.00")
     )
 
-    outstanding = (
-        sale.total_amount - completed_paid
-    )
+    outstanding = sale.total_amount - completed_paid
 
-    if outstanding <= 0:
+    if outstanding <= Decimal("0.00"):
         raise ValueError(
             "This sale has already been fully paid."
         )
@@ -75,30 +82,84 @@ def process_payment(
 @transaction.atomic
 def refund_payment(
     payment,
+    amount,
+    reason,
     user,
+    reference=None,
 ):
-    """
-    Refund a completed payment.
-    """
+    payment = (
+        Payment.objects
+        .select_for_update()
+        .get(pk=payment.pk)
+    )
 
-    if payment.status != "completed":
+    if payment.status not in ["completed", "refunded"]:
         raise ValueError(
             "Only completed payments can be refunded."
         )
 
-    payment.status = "refunded"
+    try:
+        amount = Decimal(str(amount))
+    except (InvalidOperation, ValueError, TypeError):
+        raise ValueError("Invalid refund amount.")
 
-    payment.save(
-        update_fields=["status"]
+    if amount <= Decimal("0.00"):
+        raise ValueError(
+            "Refund amount must be greater than zero."
+        )
+
+    valid_reasons = {
+        choice[0]
+        for choice in Refund.REFUND_REASONS
+    }
+
+    if reason not in valid_reasons:
+        raise ValueError(
+            "Invalid refund reason."
+        )
+
+    already_refunded = (
+        Refund.objects
+        .filter(payment=payment)
+        .aggregate(
+            total=Sum("amount")
+        )["total"]
+        or Decimal("0.00")
     )
 
-    return payment
+    refundable_amount = payment.amount - already_refunded
 
+    if refundable_amount <= Decimal("0.00"):
+        raise ValueError(
+            "This payment has already been fully refunded."
+        )
 
-# Backward-compatible alias.
-#
-# This allows existing code using record_payment()
-# to continue working while the API uses process_payment().
+    if amount > refundable_amount:
+        raise ValueError(
+            f"Refund exceeds refundable amount. "
+            f"Refundable amount is ₦{refundable_amount}."
+        )
+
+    refund = Refund.objects.create(
+        payment=payment,
+        amount=amount,
+        reason=reason,
+        reference=reference,
+        processed_by=user,
+    )
+
+    new_total_refunded = (
+        already_refunded + amount
+    )
+
+    if new_total_refunded >= payment.amount:
+        payment.status = "refunded"
+        payment.save(
+            update_fields=["status"]
+        )
+
+    return refund
+
 
 def record_payment(
     sale,
@@ -107,7 +168,6 @@ def record_payment(
     processed_by,
     transaction_reference=None,
 ):
-
     return process_payment(
         sale=sale,
         amount=amount,
@@ -115,4 +175,3 @@ def record_payment(
         user=processed_by,
         reference=transaction_reference,
     )
-    

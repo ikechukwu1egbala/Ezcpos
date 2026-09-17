@@ -283,6 +283,12 @@ class SaleSerializer(serializers.ModelSerializer):
         read_only=True,
     )
 
+    amount_paid = serializers.SerializerMethodField()
+
+    outstanding_balance = serializers.SerializerMethodField()
+
+    payment_status = serializers.SerializerMethodField()
+
     class Meta:
         model = Sale
 
@@ -293,6 +299,9 @@ class SaleSerializer(serializers.ModelSerializer):
             "customer",
             "customer_name",
             "total_amount",
+            "amount_paid",
+            "outstanding_balance",
+            "payment_status",
             "created_at",
             "items",
         ]
@@ -300,8 +309,69 @@ class SaleSerializer(serializers.ModelSerializer):
         read_only_fields = [
             "id",
             "total_amount",
+            "amount_paid",
+            "outstanding_balance",
+            "payment_status",
             "created_at",
         ]
+
+    def get_amount_paid(self, obj):
+        from django.db.models import Sum
+        from decimal import Decimal
+
+        amount_paid = (
+            obj.payments
+            .filter(status="completed")
+            .aggregate(
+                total=Sum("amount")
+            )["total"]
+            or Decimal("0.00")
+        )
+
+        return amount_paid
+
+    def get_outstanding_balance(self, obj):
+        from django.db.models import Sum
+        from decimal import Decimal
+
+        amount_paid = (
+            obj.payments
+            .filter(status="completed")
+            .aggregate(
+                total=Sum("amount")
+            )["total"]
+            or Decimal("0.00")
+        )
+
+        outstanding = (
+            obj.total_amount - amount_paid
+        )
+
+        if outstanding < Decimal("0.00"):
+            outstanding = Decimal("0.00")
+
+        return outstanding
+
+    def get_payment_status(self, obj):
+        from django.db.models import Sum
+        from decimal import Decimal
+
+        amount_paid = (
+            obj.payments
+            .filter(status="completed")
+            .aggregate(
+                total=Sum("amount")
+            )["total"]
+            or Decimal("0.00")
+        )
+
+        if amount_paid <= Decimal("0.00"):
+            return "CREDIT"
+
+        if amount_paid < obj.total_amount:
+            return "PARTIAL"
+
+        return "PAID"
 
     def create(self, validated_data):
 
@@ -313,6 +383,27 @@ class SaleSerializer(serializers.ModelSerializer):
         sale = Sale.objects.create(
             **validated_data
         )
+
+        total = Decimal("0.00")
+
+        for item_data in items_data:
+
+            item = SaleItem.objects.create(
+                sale=sale,
+                **item_data
+            )
+
+            total += item.get_total()
+
+        sale.total_amount = total
+
+        sale.save(
+            update_fields=[
+                "total_amount"
+            ]
+        )
+
+        return sale
 
         total = 0
 
