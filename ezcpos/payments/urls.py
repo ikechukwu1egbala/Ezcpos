@@ -1,7 +1,11 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
-from .views import PaymentViewSet, RefundViewSet
+from .views import (
+    PaymentViewSet,
+    RefundViewSet,
+    SalesReturnViewSet,
+)
 
 
 router = DefaultRouter()
@@ -13,6 +17,12 @@ router.register(
 )
 
 router.register(
+    r"returns",
+    SalesReturnViewSet,
+    basename="sales-return",
+)
+
+router.register(
     r"",
     PaymentViewSet,
     basename="payment",
@@ -20,5 +30,8 @@ router.register(
 
 
 urlpatterns = [
-    path("", include(router.urls)),
+    path(
+        "",
+        include(router.urls),
+    ),
 ]

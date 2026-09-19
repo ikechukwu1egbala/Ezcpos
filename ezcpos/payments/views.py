@@ -6,29 +6,55 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework import status
 
-from .models import Payment, Refund
-from .serializers import PaymentSerializer, RefundSerializer
-from .services import process_payment, refund_payment
+from .models import (
+    Payment,
+    Refund,
+    SalesReturn,
+)
+
+from .serializers import (
+    PaymentSerializer,
+    RefundSerializer,
+    SalesReturnSerializer,
+)
+
+from .services import (
+    process_payment,
+    refund_payment,
+    process_sales_return,
+)
+
 from pos.models import Sale
 
 
 class PaymentViewSet(ModelViewSet):
 
-    queryset = Payment.objects.select_related(
-        "sale",
-        "processed_by",
-    ).prefetch_related(
-        "refunds",
-    ).all()
+    queryset = (
+        Payment.objects
+        .select_related(
+            "sale",
+            "processed_by",
+        )
+        .prefetch_related(
+            "refunds",
+        )
+        .all()
+    )
 
     serializer_class = PaymentSerializer
     permission_classes = [IsAuthenticated]
 
-    def create(self, request, *args, **kwargs):
-
+    def create(
+        self,
+        request,
+        *args,
+        **kwargs,
+    ):
         sale_id = request.data.get("sale")
         amount = request.data.get("amount")
-        method = request.data.get("payment_method")
+        method = request.data.get(
+            "payment_method"
+        )
         reference = request.data.get(
             "transaction_reference"
         )
@@ -71,7 +97,9 @@ class PaymentViewSet(ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        serializer = self.get_serializer(payment)
+        serializer = self.get_serializer(
+            payment
+        )
 
         return Response(
             serializer.data,
@@ -82,13 +110,18 @@ class PaymentViewSet(ModelViewSet):
         detail=True,
         methods=["post"],
     )
-    def refund(self, request, pk=None):
-
+    def refund(
+        self,
+        request,
+        pk=None,
+    ):
         payment = self.get_object()
 
         amount = request.data.get("amount")
         reason = request.data.get("reason")
-        reference = request.data.get("reference")
+        reference = request.data.get(
+            "reference"
+        )
 
         if amount is None:
             return Response(
@@ -117,7 +150,9 @@ class PaymentViewSet(ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        serializer = RefundSerializer(refund)
+        serializer = RefundSerializer(
+            refund
+        )
 
         return Response(
             serializer.data,
@@ -127,11 +162,15 @@ class PaymentViewSet(ModelViewSet):
 
 class RefundViewSet(ModelViewSet):
 
-    queryset = Refund.objects.select_related(
-        "payment",
-        "payment__sale",
-        "processed_by",
-    ).all()
+    queryset = (
+        Refund.objects
+        .select_related(
+            "payment",
+            "payment__sale",
+            "processed_by",
+        )
+        .all()
+    )
 
     serializer_class = RefundSerializer
     permission_classes = [IsAuthenticated]
@@ -141,3 +180,109 @@ class RefundViewSet(ModelViewSet):
         "head",
         "options",
     ]
+
+
+class SalesReturnViewSet(ModelViewSet):
+
+    queryset = (
+        SalesReturn.objects
+        .select_related(
+            "sale",
+            "refund",
+            "location",
+            "processed_by",
+        )
+        .prefetch_related(
+            "items",
+        )
+        .all()
+    )
+
+    serializer_class = SalesReturnSerializer
+    permission_classes = [IsAuthenticated]
+
+    def create(
+        self,
+        request,
+        *args,
+        **kwargs,
+    ):
+        sale_id = request.data.get("sale")
+        location_id = request.data.get(
+            "location"
+        )
+        refund_id = request.data.get(
+            "refund"
+        )
+        reason = request.data.get(
+            "reason"
+        )
+        reference = request.data.get(
+            "reference"
+        )
+        items = request.data.get(
+            "items",
+            []
+        )
+
+        if not sale_id:
+            return Response(
+                {"detail": "Sale is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not reason:
+            return Response(
+                {"detail": "Return reason is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        sale = get_object_or_404(
+            Sale,
+            pk=sale_id,
+        )
+
+        location = None
+
+        if location_id:
+            from pos.models import Location
+
+            location = get_object_or_404(
+                Location,
+                pk=location_id,
+                is_active=True,
+            )
+
+        refund = None
+
+        if refund_id:
+            refund = get_object_or_404(
+                Refund,
+                pk=refund_id,
+            )
+
+        try:
+            sales_return = process_sales_return(
+                sale=sale,
+                items=items,
+                location=location,
+                reason=reason,
+                user=request.user,
+                refund=refund,
+                reference=reference,
+            )
+
+        except ValueError as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = self.get_serializer(
+            sales_return
+        )
+
+        return Response(
+            serializer.data,
+            status=status.HTTP_201_CREATED,
+        )
