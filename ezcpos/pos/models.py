@@ -455,6 +455,18 @@ class Sale(models.Model):
         blank=True,
     )
 
+    subtotal = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal("0"),
+    )
+
+    discount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal("0"),
+    )
+
     total_amount = models.DecimalField(
         max_digits=12,
         decimal_places=2,

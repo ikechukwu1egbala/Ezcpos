@@ -4,18 +4,25 @@ from .models import Expense, ExpenseCategory
 
 
 class ExpenseCategorySerializer(serializers.ModelSerializer):
-
     class Meta:
         model = ExpenseCategory
         fields = "__all__"
-
         read_only_fields = [
             "id",
         ]
 
+    def validate_name(self, value):
+        value = value.strip()
+
+        if not value:
+            raise serializers.ValidationError(
+                "Category name cannot be empty."
+            )
+
+        return value
+
 
 class ExpenseSerializer(serializers.ModelSerializer):
-
     category_name = serializers.CharField(
         source="category.name",
         read_only=True,
@@ -61,10 +68,19 @@ class ExpenseSerializer(serializers.ModelSerializer):
         ]
 
     def validate_amount(self, value):
-
         if value <= 0:
             raise serializers.ValidationError(
                 "Expense amount must be greater than zero."
+            )
+
+        return value
+
+    def validate_description(self, value):
+        value = value.strip()
+
+        if not value:
+            raise serializers.ValidationError(
+                "Expense description cannot be empty."
             )
 
         return value
