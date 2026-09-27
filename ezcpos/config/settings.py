@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
 
     "rest_framework",
+    "sync",
 
     "users",
     "pos",
@@ -152,3 +153,6 @@ SIMPLE_JWT = {
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": False,
 }
+
+
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
