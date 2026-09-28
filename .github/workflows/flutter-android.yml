@@ -16,10 +16,6 @@ jobs:
     name: Build EZC Android APK
     runs-on: ubuntu-latest
 
-    defaults:
-      run:
-        working-directory: mobile/ezcpos_mobile
-
     steps:
       - name: Checkout EZC
         uses: actions/checkout@v4
@@ -46,9 +42,11 @@ jobs:
           java -version
 
       - name: Get Flutter dependencies
+        working-directory: mobile/ezcpos_mobile
         run: flutter pub get
 
       - name: Analyze Flutter project
+        working-directory: mobile/ezcpos_mobile
         run: flutter analyze --no-fatal-infos
 
       - name: Build Android APK
