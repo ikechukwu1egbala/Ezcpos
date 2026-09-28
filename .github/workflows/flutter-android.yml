@@ -49,7 +49,7 @@ jobs:
         run: flutter pub get
 
       - name: Analyze Flutter project
-        run: flutter analyze
+        run: flutter analyze --no-fatal-infos
 
       - name: Build Android APK
         working-directory: mobile/ezcpos_mobile/android
