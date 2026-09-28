@@ -49,6 +49,19 @@ jobs:
         working-directory: mobile/ezcpos_mobile
         run: flutter analyze --no-fatal-infos
 
+      - name: Diagnose Android Gradle wrapper
+        working-directory: mobile/ezcpos_mobile/android
+        run: |
+          pwd
+          echo "=== DIRECTORY ==="
+          ls -la
+          echo "=== GRADLE WRAPPER ==="
+          ls -l gradlew
+          file gradlew
+          head -n 1 gradlew | od -An -t x1
+          echo "=== GIT ROOT ==="
+          git rev-parse --show-toplevel
+
       - name: Build Android APK
         working-directory: mobile/ezcpos_mobile/android
         run: ./gradlew assembleDebug --no-daemon --stacktrace
