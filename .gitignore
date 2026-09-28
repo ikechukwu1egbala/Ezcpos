@@ -32,3 +32,15 @@ env/
 # Django collected static files
 staticfiles/
 ezcpos/staticfiles/
+
+# Flutter
+mobile/ezcpos_mobile/.dart_tool/
+mobile/ezcpos_mobile/.flutter-plugins
+mobile/ezcpos_mobile/.flutter-plugins-dependencies
+mobile/ezcpos_mobile/.packages
+mobile/ezcpos_mobile/.pub-cache/
+mobile/ezcpos_mobile/build/
+mobile/ezcpos_mobile/android/local.properties
+mobile/ezcpos_mobile/android/app/debug/
+mobile/ezcpos_mobile/android/app/profile/
+mobile/ezcpos_mobile/android/app/release/
