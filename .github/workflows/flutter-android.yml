@@ -47,7 +47,7 @@ jobs:
       - name: Set up Flutter 3.13.4
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.13.4'
+          flutter-version: '3.16.9'
           channel: stable
           cache: true
           pub-cache: true
@@ -86,7 +86,7 @@ jobs:
       - name: Set up Flutter 3.13.4
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.13.4'
+          flutter-version: '3.16.9'
           channel: stable
           cache: true
           pub-cache: true
